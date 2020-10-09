@@ -5,6 +5,7 @@
 
 package kotlin.jvm
 
+import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.KClass
 
 /**
@@ -13,7 +14,7 @@ import kotlin.reflect.KClass
  * If a method has N parameters and M of which have default values, M overloads are generated: the first one
  * takes N-1 parameters (all but the last one that takes a default value), the second takes N-2 parameters, and so on.
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
+@Target(FUNCTION, CONSTRUCTOR)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
 public actual annotation class JvmOverloads
@@ -25,7 +26,7 @@ public actual annotation class JvmOverloads
  * See the [Kotlin language documentation](https://kotlinlang.org/docs/reference/java-to-kotlin-interop.html#static-methods)
  * for more information.
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER)
+@Target(FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER)
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
 public actual annotation class JvmStatic
@@ -37,7 +38,7 @@ public actual annotation class JvmStatic
  * for more information.
  * @property name the name of the element.
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER, AnnotationTarget.FILE)
+@Target(FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, FILE)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
 public actual annotation class JvmName(actual val name: String)
@@ -46,7 +47,7 @@ public actual annotation class JvmName(actual val name: String)
  * Instructs the Kotlin compiler to generate a multifile class with top-level functions and properties declared in this file as one of its parts.
  * Name of the corresponding multifile class is provided by the [JvmName] annotation.
  */
-@Target(AnnotationTarget.FILE)
+@Target(FILE)
 @Retention(AnnotationRetention.SOURCE)
 @MustBeDocumented
 public actual annotation class JvmMultifileClass
@@ -57,7 +58,7 @@ public actual annotation class JvmMultifileClass
  * will see the class file as if it was declared in the specified package.
  * If a file is annotated with this annotation, it can only have function, property and typealias declarations, but no classes.
  */
-@Target(AnnotationTarget.FILE)
+@Target(FILE)
 @Retention(AnnotationRetention.SOURCE)
 @MustBeDocumented
 @SinceKotlin("1.2")
@@ -72,7 +73,7 @@ internal actual annotation class JvmPackageName(actual val name: String)
  * This annotation is intended for *rare cases* when API designer needs to hide Kotlin-specific target from Java API
  * while keeping it a part of Kotlin API so the resulting API is idiomatic for both languages.
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER, AnnotationTarget.FIELD)
+@Target(FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, FIELD, FILE)
 @Retention(AnnotationRetention.SOURCE)
 public actual annotation class JvmSynthetic
 
@@ -94,7 +95,7 @@ public actual annotation class JvmSynthetic
  *
  * @property exceptionClasses the list of checked exception classes that may be thrown by the function.
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER, AnnotationTarget.CONSTRUCTOR)
+@Target(FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, CONSTRUCTOR)
 @Retention(AnnotationRetention.SOURCE)
 public annotation class Throws(vararg val exceptionClasses: KClass<out Throwable>)
 
@@ -105,7 +106,7 @@ public annotation class Throws(vararg val exceptionClasses: KClass<out Throwable
  * See the [Kotlin language documentation](https://kotlinlang.org/docs/reference/java-to-kotlin-interop.html#instance-fields)
  * for more information.
  */
-@Target(AnnotationTarget.FIELD)
+@Target(FIELD)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
 public actual annotation class JvmField
@@ -119,7 +120,7 @@ public actual annotation class JvmField
  *
  * It may be helpful only if declaration seems to be inconvenient to use from Java.
  */
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.TYPE)
+@Target(CLASS, FUNCTION, PROPERTY, TYPE)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
 public actual annotation class JvmSuppressWildcards(actual val suppress: Boolean = true)
@@ -129,7 +130,7 @@ public actual annotation class JvmSuppressWildcards(actual val suppress: Boolean
  *
  * It may be helpful only if declaration seems to be inconvenient to use from Java without wildcard.
  */
-@Target(AnnotationTarget.TYPE)
+@Target(TYPE)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
 public actual annotation class JvmWildcard
