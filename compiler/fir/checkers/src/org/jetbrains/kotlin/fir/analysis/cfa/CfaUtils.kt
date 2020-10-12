@@ -54,24 +54,30 @@ class LocalPropertyCollector private constructor() : ControlFlowGraphVisitorVoid
 }
 
 class PathAwarePropertyInitializationInfo(
-    map: PersistentMap<String?, PropertyInitializationInfo> = persistentMapOf()
-) : ControlFlowInfo<PathAwarePropertyInitializationInfo, String?, PropertyInitializationInfo>(map) {
+    map: PersistentMap<EdgeLabel, PropertyInitializationInfo> = persistentMapOf()
+) : ControlFlowInfo<PathAwarePropertyInitializationInfo, EdgeLabel, PropertyInitializationInfo>(map) {
     companion object {
-        val INIT = PathAwarePropertyInitializationInfo(persistentMapOf(null to PropertyInitializationInfo.EMPTY))
+        val INIT = PathAwarePropertyInitializationInfo(persistentMapOf(EdgeLabel.Normal to PropertyInitializationInfo.EMPTY))
     }
 
-    override val constructor: (PersistentMap<String?, PropertyInitializationInfo>) -> PathAwarePropertyInitializationInfo =
+    override val constructor: (PersistentMap<EdgeLabel, PropertyInitializationInfo>) -> PathAwarePropertyInitializationInfo =
         ::PathAwarePropertyInitializationInfo
 
-    fun applyLabel(node: CFGNode<*>, label: String?): PathAwarePropertyInitializationInfo {
-        if (label == null) {
+    val infoAtNormalPath: PropertyInitializationInfo
+        get() = map[EdgeLabel.Normal] ?: PropertyInitializationInfo.EMPTY
+
+    val hasNormalPath: Boolean
+        get() = map.containsKey(EdgeLabel.Normal)
+
+    fun applyLabel(node: CFGNode<*>, label: EdgeLabel): PathAwarePropertyInitializationInfo {
+        if (label.isNormal) {
             // Special case: when we exit the try expression, null label means a normal path.
             // Filter out any info bound to non-null label
             // One day, if we allow multiple edges between nodes with different labels, e.g., labeling all paths in try/catch/finally,
             // instead of this kind of special handling, proxy enter/exit nodes per label are preferred.
             if (node is TryExpressionExitNode) {
-                return if (map.containsKey(null)) {
-                    constructor(persistentMapOf(null to map[null]!!))
+                return if (hasNormalPath) {
+                    constructor(persistentMapOf(EdgeLabel.Normal to infoAtNormalPath))
                 } else {
                     /* This means no info for normal path. */
                     INIT
@@ -81,13 +87,13 @@ class PathAwarePropertyInitializationInfo(
             return this
         }
 
-        val hasNonNullLabels = map.keys.any { it != null }
-        return if (hasNonNullLabels) {
+        val hasAbnormalLabels = map.keys.any { !it.isNormal }
+        return if (hasAbnormalLabels) {
             // { |-> ... l1 |-> I1, l2 |-> I2, ... }
             //   | l1         // path exit: if the given info has non-null labels, this acts like a filtering
             // { |-> I1 }     // NB: remove the path info
             if (map.keys.contains(label)) {
-                constructor(persistentMapOf(null to map[label]!!))
+                constructor(persistentMapOf(EdgeLabel.Normal to map[label]!!))
             } else {
                 /* This means no info for the specific label. */
                 INIT
@@ -96,14 +102,14 @@ class PathAwarePropertyInitializationInfo(
             // { |-> ... }    // empty path info
             //   | l1         // path entry
             // { l1 -> ... }  // now, every info bound to the label
-            constructor(persistentMapOf(label to (map[null] ?: PropertyInitializationInfo.EMPTY)))
+            constructor(persistentMapOf(label to infoAtNormalPath))
         }
     }
 
     fun merge(other: PathAwarePropertyInitializationInfo): PathAwarePropertyInitializationInfo {
-        var resultMap = persistentMapOf<String?, PropertyInitializationInfo>()
+        var resultMap = persistentMapOf<EdgeLabel, PropertyInitializationInfo>()
         for (label in keys.union(other.keys)) {
-            // disjoint merging to preserve paths. i.e., merge the property initialization info iff both have the key.
+            // disjoint merging to preserve paths. i.e., merge the property initialization info if and only if both have the same key.
             // merge({ |-> I1 }, { |-> I2, l1 |-> I3 }
             //   == { |-> merge(I1, I2), l1 |-> I3 }
             val i1 = this[label]
@@ -124,10 +130,10 @@ class PathAwarePropertyInitializationInfo(
 }
 
 class PropertyInitializationInfoCollector(private val localProperties: Set<FirPropertySymbol>) :
-    ControlFlowGraphVisitor<PathAwarePropertyInitializationInfo, Collection<Pair<String?, PathAwarePropertyInitializationInfo>>>() {
+    ControlFlowGraphVisitor<PathAwarePropertyInitializationInfo, Collection<Pair<EdgeLabel, PathAwarePropertyInitializationInfo>>>() {
     override fun visitNode(
         node: CFGNode<*>,
-        data: Collection<Pair<String?, PathAwarePropertyInitializationInfo>>
+        data: Collection<Pair<EdgeLabel, PathAwarePropertyInitializationInfo>>
     ): PathAwarePropertyInitializationInfo {
         if (data.isEmpty()) return INIT
         return data.map { (label, info) -> info.applyLabel(node, label) }
@@ -136,7 +142,7 @@ class PropertyInitializationInfoCollector(private val localProperties: Set<FirPr
 
     override fun visitVariableAssignmentNode(
         node: VariableAssignmentNode,
-        data: Collection<Pair<String?, PathAwarePropertyInitializationInfo>>
+        data: Collection<Pair<EdgeLabel, PathAwarePropertyInitializationInfo>>
     ): PathAwarePropertyInitializationInfo {
         val dataForNode = visitNode(node, data)
         val reference = node.fir.lValue as? FirResolvedNamedReference ?: return dataForNode
@@ -150,7 +156,7 @@ class PropertyInitializationInfoCollector(private val localProperties: Set<FirPr
 
     override fun visitVariableDeclarationNode(
         node: VariableDeclarationNode,
-        data: Collection<Pair<String?, PathAwarePropertyInitializationInfo>>
+        data: Collection<Pair<EdgeLabel, PathAwarePropertyInitializationInfo>>
     ): PathAwarePropertyInitializationInfo {
         val dataForNode = visitNode(node, data)
         return if (node.fir.initializer == null && node.fir.delegate == null) {
@@ -172,7 +178,7 @@ class PropertyInitializationInfoCollector(private val localProperties: Set<FirPr
         symbol: FirPropertySymbol
     ): PathAwarePropertyInitializationInfo {
         assert(dataForNode.keys.isNotEmpty())
-        var resultMap = persistentMapOf<String?, PropertyInitializationInfo>()
+        var resultMap = persistentMapOf<EdgeLabel, PropertyInitializationInfo>()
         // before: { |-> { p1 |-> PI1 }, l1 |-> { p2 |-> PI2 }
         for (label in dataForNode.keys) {
             val dataPerLabel = dataForNode[label]!!

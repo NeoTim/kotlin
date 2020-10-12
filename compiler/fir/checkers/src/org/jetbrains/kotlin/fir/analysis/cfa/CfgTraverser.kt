@@ -34,7 +34,7 @@ fun ControlFlowGraph.traverse(
 
 // --------------------- Path-insensitive data collection ----------------------
 
-fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.collectDataForNode(
+fun <I : ControlFlowInfo<I, K, V>, K : Any, V : Any> ControlFlowGraph.collectDataForNode(
     direction: TraverseDirection,
     initialInfo: I,
     visitor: ControlFlowGraphVisitor<I, Collection<I>>
@@ -51,7 +51,7 @@ fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.collectDa
     return nodeMap
 }
 
-private fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.collectDataForNodeInternal(
+private fun <I : ControlFlowInfo<I, K, V>, K : Any, V : Any> ControlFlowGraph.collectDataForNodeInternal(
     direction: TraverseDirection,
     initialInfo: I,
     visitor: ControlFlowGraphVisitor<I, Collection<I>>,
@@ -83,10 +83,10 @@ private fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.c
 
 // ---------------------- Path-sensitive data collection -----------------------
 
-fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.collectPathAwareDataForNode(
+fun <I : ControlFlowInfo<I, K, V>, K : Any, V : Any> ControlFlowGraph.collectPathAwareDataForNode(
     direction: TraverseDirection,
     initialInfo: I,
-    visitor: ControlFlowGraphVisitor<I, Collection<Pair<String?, I>>>
+    visitor: ControlFlowGraphVisitor<I, Collection<Pair<EdgeLabel, I>>>
 ): Map<CFGNode<*>, I> {
     val nodeMap = LinkedHashMap<CFGNode<*>, I>()
     val startNode = getEnterNode(direction)
@@ -100,10 +100,10 @@ fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.collectPa
     return nodeMap
 }
 
-private fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.collectPathAwareDataForNodeInternal(
+private fun <I : ControlFlowInfo<I, K, V>, K : Any, V : Any> ControlFlowGraph.collectPathAwareDataForNodeInternal(
     direction: TraverseDirection,
     initialInfo: I,
-    visitor: ControlFlowGraphVisitor<I, Collection<Pair<String?, I>>>,
+    visitor: ControlFlowGraphVisitor<I, Collection<Pair<EdgeLabel, I>>>,
     nodeMap: MutableMap<CFGNode<*>, I>,
     changed: MutableMap<CFGNode<*>, Boolean>
 ) {
@@ -119,11 +119,13 @@ private fun <I : ControlFlowInfo<I, K, V>, K : Any?, V : Any> ControlFlowGraph.c
         // One noticeable different against the path-unaware version is, here, we pair the control-flow info with the label.
         val previousData =
             previousNodes.mapNotNull {
+                val label =
+                    when (direction) {
+                        TraverseDirection.Forward -> node.incomingEdges[it]?.label ?: EdgeLabel.Normal
+                        TraverseDirection.Backward -> node.outgoingEdges[it]?.label ?: EdgeLabel.Normal
+                    }
                 val v = nodeMap[it] ?: return@mapNotNull null
-                when (direction) {
-                    TraverseDirection.Forward -> node.incomingEdges[it]?.label to v
-                    TraverseDirection.Backward -> node.outgoingEdges[it]?.label to v
-                }
+                label to v
             }
         val data = nodeMap[node]
         val newData = node.accept(visitor, previousData)

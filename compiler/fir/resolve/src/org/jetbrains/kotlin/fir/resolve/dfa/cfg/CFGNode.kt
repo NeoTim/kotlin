@@ -19,13 +19,25 @@ import org.jetbrains.kotlin.utils.addToStdlib.runIf
 
 sealed class CFGNode<out E : FirElement>(val owner: ControlFlowGraph, val level: Int, private val id: Int) {
     companion object {
-        internal fun addEdge(from: CFGNode<*>, to: CFGNode<*>, kind: EdgeKind, propagateDeadness: Boolean, label: String? = null) {
+        internal fun addEdge(
+            from: CFGNode<*>,
+            to: CFGNode<*>,
+            kind: EdgeKind,
+            propagateDeadness: Boolean,
+            label: EdgeLabel = EdgeLabel.Normal
+        ) {
             from._followingNodes += to
             to._previousNodes += from
             addJustKindEdge(from, to, kind, propagateDeadness, edgeExists = false, label = label)
         }
 
-        internal fun addJustKindEdge(from: CFGNode<*>, to: CFGNode<*>, kind: EdgeKind, propagateDeadness: Boolean, label: String? = null) {
+        internal fun addJustKindEdge(
+            from: CFGNode<*>,
+            to: CFGNode<*>,
+            kind: EdgeKind,
+            propagateDeadness: Boolean,
+            label: EdgeLabel = EdgeLabel.Normal
+        ) {
             addJustKindEdge(from, to, kind, propagateDeadness, edgeExists = true, label = label)
         }
 
@@ -35,18 +47,18 @@ sealed class CFGNode<out E : FirElement>(val owner: ControlFlowGraph, val level:
             kind: EdgeKind,
             propagateDeadness: Boolean,
             edgeExists: Boolean,
-            label: String? = null
+            label: EdgeLabel = EdgeLabel.Normal
         ) {
             // It's hard to define label merging, hence overwritten with the latest one.
             // One day, if we allow multiple edges between nodes with different labels, we won't even need kind merging.
-            if (kind != EdgeKind.Forward || label != null) {
+            if (kind != EdgeKind.Forward || label != EdgeLabel.Normal) {
                 val fromToKind = from._outgoingEdges[to]?.kind ?: runIf(edgeExists) { EdgeKind.Forward }
                 merge(kind, fromToKind)?.let {
-                    from._outgoingEdges[to] = Edge(it, label)
+                    from._outgoingEdges[to] = Edge.create(label, it)
                 } ?: from._outgoingEdges.remove(to)
                 val toFromKind = to._incomingEdges[from]?.kind ?: runIf(edgeExists) { EdgeKind.Forward }
                 merge(kind, toFromKind)?.let {
-                    to._incomingEdges[from] = Edge(it, label)
+                    to._incomingEdges[from] = Edge.create(label, it)
                 } ?: to._incomingEdges.remove(from)
             }
             if (propagateDeadness && kind == EdgeKind.DeadForward) {
@@ -96,8 +108,8 @@ sealed class CFGNode<out E : FirElement>(val owner: ControlFlowGraph, val level:
     val previousNodes: List<CFGNode<*>> get() = _previousNodes
     val followingNodes: List<CFGNode<*>> get() = _followingNodes
 
-    private val _incomingEdges = mutableMapOf<CFGNode<*>, Edge>().withDefault { Edge(EdgeKind.Forward) }
-    private val _outgoingEdges = mutableMapOf<CFGNode<*>, Edge>().withDefault { Edge(EdgeKind.Forward) }
+    private val _incomingEdges = mutableMapOf<CFGNode<*>, Edge>().withDefault { Edge.create(EdgeLabel.Normal, EdgeKind.Forward) }
+    private val _outgoingEdges = mutableMapOf<CFGNode<*>, Edge>().withDefault { Edge.create(EdgeLabel.Normal, EdgeKind.Forward) }
 
     val incomingEdges: Map<CFGNode<*>, Edge> get() = _incomingEdges
     val outgoingEdges: Map<CFGNode<*>, Edge> get() = _outgoingEdges

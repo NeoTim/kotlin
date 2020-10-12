@@ -87,9 +87,47 @@ class ControlFlowGraph(val declaration: FirDeclaration?, val name: String, val k
 }
 
 data class Edge(
+    val label: EdgeLabel,
     val kind: EdgeKind,
-    val label: String? = null
-)
+) {
+    companion object {
+        private val Normal_Forward = Edge(EdgeLabel.Normal, EdgeKind.Forward)
+        private val Normal_DeadForward = Edge(EdgeLabel.Normal, EdgeKind.DeadForward)
+        private val Normal_DfgForward = Edge(EdgeLabel.Normal, EdgeKind.DfgForward)
+        private val Normal_CfgForward = Edge(EdgeLabel.Normal, EdgeKind.CfgForward)
+        private val Normal_CfgBackward = Edge(EdgeLabel.Normal, EdgeKind.CfgBackward)
+        private val Normal_DeadBackward = Edge(EdgeLabel.Normal, EdgeKind.DeadBackward)
+
+        fun create(label: EdgeLabel, kind: EdgeKind): Edge =
+            when (label) {
+                EdgeLabel.Normal -> {
+                    when (kind) {
+                        EdgeKind.Forward -> Normal_Forward
+                        EdgeKind.DeadForward -> Normal_DeadForward
+                        EdgeKind.DfgForward -> Normal_DfgForward
+                        EdgeKind.CfgForward -> Normal_CfgForward
+                        EdgeKind.CfgBackward -> Normal_CfgBackward
+                        EdgeKind.DeadBackward -> Normal_DeadBackward
+                    }
+                }
+                else -> {
+                    Edge(label, kind)
+                }
+            }
+    }
+}
+
+enum class EdgeLabel(val label: String?) {
+    Normal(label = null),
+    UncaughtException(label = "onUncaughtException");
+
+    val isNormal: Boolean
+        get() = this == Normal
+
+    override fun toString(): String {
+        return label ?: ""
+    }
+}
 
 enum class EdgeKind(
     val usedInDfa: Boolean,

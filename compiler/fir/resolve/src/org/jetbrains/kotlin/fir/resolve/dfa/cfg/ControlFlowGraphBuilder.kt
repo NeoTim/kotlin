@@ -24,8 +24,6 @@ import kotlin.random.Random
 @RequiresOptIn
 private annotation class CfgBuilderInternals
 
-private const val FINALLY_PREFIX = "onExceptionToFinallyBlock"
-
 class ControlFlowGraphBuilder {
     @CfgBuilderInternals
     private val graphs: Stack<ControlFlowGraph> = stackOf(ControlFlowGraph(null, "<TOP_LEVEL_GRAPH>", ControlFlowGraph.Kind.TopLevel))
@@ -796,7 +794,7 @@ class ControlFlowGraphBuilder {
 
         if (tryExpression.finallyBlock != null) {
             val finallyEnterNode = createFinallyBlockEnterNode(tryExpression)
-            addEdge(enterTryNodeBlock, finallyEnterNode, label = "${FINALLY_PREFIX}_${tryExitNode.level}")
+            addEdge(enterTryNodeBlock, finallyEnterNode, label = EdgeLabel.UncaughtException)
             finallyEnterNodes.push(finallyEnterNode)
         }
 
@@ -850,7 +848,7 @@ class ControlFlowGraphBuilder {
             popAndAddEdge(it)
             val tryExitNode = tryExitNodes.top()
             addEdge(it, tryExitNode)
-            addEdge(it, exitTargetsForTry.top(), label = "${FINALLY_PREFIX}_${tryExitNode.level}")
+            addEdge(it, exitTargetsForTry.top(), label = EdgeLabel.UncaughtException)
         }
     }
 
@@ -1203,7 +1201,7 @@ class ControlFlowGraphBuilder {
         isDead: Boolean = false,
         isBack: Boolean = false,
         preferredKind: EdgeKind = EdgeKind.Forward,
-        label: String? = null
+        label: EdgeLabel = EdgeLabel.Normal
     ) {
         val kind = if (isDead || from.isDead || to.isDead) {
             if (isBack) EdgeKind.DeadBackward else EdgeKind.DeadForward
@@ -1215,7 +1213,7 @@ class ControlFlowGraphBuilder {
         from: CFGNode<*>,
         to: CFGNode<*>,
         isDead: Boolean = false,
-        label: String? = null
+        label: EdgeLabel = EdgeLabel.Normal
     ) {
         addEdge(from, to, propagateDeadness = false, isDead = isDead, isBack = true, preferredKind = EdgeKind.CfgBackward, label = label)
     }

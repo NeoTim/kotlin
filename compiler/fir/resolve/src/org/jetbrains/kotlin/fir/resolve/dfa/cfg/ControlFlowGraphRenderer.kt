@@ -121,8 +121,8 @@ class FirControlFlowGraphRenderVisitor(
                     printlnWithNoIndent(";")
                 }
 
-                if (edges.any { node.outgoingEdges[it]?.label != null }) {
-                    val edgeGroups = edges.groupBy { node.outgoingEdges[it]?.label != null }
+                if (edges.any { node.outgoingEdges[it]?.label?.label != null }) {
+                    val edgeGroups = edges.groupBy { node.outgoingEdges[it]?.label?.label != null }
                     edgeGroups[false]?.let { renderEdgesWithoutLabel(it) }
                     for (edge in edgeGroups[true]!!) {
                         print(
@@ -131,7 +131,7 @@ class FirControlFlowGraphRenderVisitor(
                             "{", indices.getValue(edge), "}"
                         )
                         EDGE_STYLE.getValue(kind).takeIf { it.isNotBlank() }?.let { printWithNoIndent(" $it") }
-                        print("[label=${node.outgoingEdges[edge]!!.label!!}]")
+                        print("[label=${node.outgoingEdges[edge]!!.label}]")
                         printlnWithNoIndent(";")
                     }
                 } else {

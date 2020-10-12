@@ -48,14 +48,14 @@ object FirPropertyInitializationAnalyzer : AbstractFirPropertyInitializationChec
             val symbol = reference.resolvedSymbol as? FirPropertySymbol ?: return
             if (symbol !in localProperties) return
             if (symbol.fir.isLateInit) return
-            val info = data.getValue(node)
-            if (info.containsKey(null)) {
+            val pathAwareInfo = data.getValue(node)
+            if (pathAwareInfo.hasNormalPath) {
                 // Check accumulated info at the normal path
-                investigate(info[null]!!, symbol, node)
+                investigate(pathAwareInfo.infoAtNormalPath, symbol, node)
             } else {
                 // Otherwise, investigate all remaining paths
-                for (label in info.keys) {
-                    investigate(info[label]!!, symbol, node)
+                for (label in pathAwareInfo.keys) {
+                    investigate(pathAwareInfo[label]!!, symbol, node)
                 }
             }
         }
